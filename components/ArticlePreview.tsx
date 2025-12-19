@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { GeneratedArticle } from '../types';
-import { Download, CheckCircle, ExternalLink, Copy, CloudUpload, FileText, Calendar, ArrowLeft, Plus, Globe } from 'lucide-react';
+import { Download, CheckCircle, ExternalLink, Copy, UploadCloud, FileText, Calendar, ArrowLeft, Plus, Globe } from 'lucide-react';
 
 interface ArticlePreviewProps {
   article: GeneratedArticle;
@@ -88,7 +88,7 @@ const ArticlePreview: React.FC<ArticlePreviewProps> = ({ article, onDownloadDoc,
                     disabled={isUploading}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white text-sm font-medium transition-colors shadow-lg shadow-indigo-600/20"
                 >
-                    {isUploading ? <div className="animate-spin w-4 h-4 border-2 border-white rounded-full border-t-transparent"></div> : <CloudUpload className="w-4 h-4" />}
+                    {isUploading ? <div className="animate-spin w-4 h-4 border-2 border-white rounded-full border-t-transparent"></div> : <UploadCloud className="w-4 h-4" />}
                     <span className="hidden sm:inline">Salvar Drive</span>
                 </button>
             )}
