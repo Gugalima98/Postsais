@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { GuestPostRequest } from '../types';
 import { 
-  Sparkles, ArrowRight, Link as LinkIcon, Globe, 
-  Type, Target, MousePointer2, AtSign 
+  ArrowRight, Sparkles, ChevronLeft, Target, Link as LinkIcon, AtSign, FileSpreadsheet, Send
 } from 'lucide-react';
 
 interface PostFormProps {
   onSubmit: (data: GuestPostRequest) => void;
   isLoading: boolean;
+  onOpenBatchImport: () => void;
 }
 
-const generateId = () => {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-};
+const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 
-const PostForm: React.FC<PostFormProps> = ({ onSubmit, isLoading }) => {
+const PostForm: React.FC<PostFormProps> = ({ onSubmit, isLoading, onOpenBatchImport }) => {
+  const [step, setStep] = useState(0);
   const [formData, setFormData] = useState<Omit<GuestPostRequest, 'id'>>({
     keyword: '',
     hostNiche: '',
@@ -23,159 +22,232 @@ const PostForm: React.FC<PostFormProps> = ({ onSubmit, isLoading }) => {
     targetNiche: '',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [formData.keyword]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNext = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (step === 0 && !formData.keyword) return;
+    if (step === 1 && !formData.hostNiche) return;
+    setStep(prev => prev + 1);
+  };
+
+  const handleBack = () => {
+    setStep(prev => prev - 1);
+  };
+
+  const handleFinalSubmit = () => {
+    if (!formData.targetLink || !formData.anchorText) return;
     onSubmit({ ...formData, id: generateId() });
   };
 
-  // Shared input class styles
-  const inputClasses = "w-full bg-slate-950 border border-slate-700/50 rounded-lg py-3 pl-10 pr-4 text-slate-200 focus:ring-1 focus:border-indigo-500 placeholder:text-slate-600 transition-all text-sm";
-  const labelClasses = "block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide";
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          if (step < 2) handleNext();
+          else handleFinalSubmit();
+      }
+  };
 
+  // --- STEPS RENDERING ---
+
+  // STEP 0: KEYWORD (Main Screen)
+  if (step === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 animate-in fade-in duration-500">
+            <div className="w-full max-w-2xl text-center space-y-8">
+                <div className="space-y-4">
+                    <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400 pb-2">
+                        Sobre o que vamos escrever?
+                    </h1>
+                    <p className="text-slate-400 text-lg">
+                        Digite o tema do seu artigo ou importe uma planilha para gerar em massa.
+                    </p>
+                </div>
+
+                <div className="relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-500"></div>
+                    <div className="relative bg-slate-900 rounded-xl border border-slate-700 shadow-2xl flex flex-col">
+                        <textarea
+                            ref={textareaRef}
+                            name="keyword"
+                            value={formData.keyword}
+                            onChange={handleChange}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Ex: Benefícios da IA no Marketing Digital..."
+                            className="w-full bg-transparent text-white placeholder:text-slate-600 text-xl p-6 rounded-xl outline-none resize-none min-h-[80px] max-h-[200px]"
+                            rows={1}
+                            autoFocus
+                        />
+                        <div className="flex justify-between items-center px-4 pb-4">
+                            <button
+                                onClick={onOpenBatchImport}
+                                className="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-emerald-400 transition-colors px-3 py-2 rounded-lg hover:bg-slate-800"
+                            >
+                                <FileSpreadsheet className="w-4 h-4" />
+                                Importar Planilha
+                            </button>
+
+                            <button
+                                onClick={() => handleNext()}
+                                disabled={!formData.keyword.trim()}
+                                className={`
+                                    p-3 rounded-lg transition-all duration-300
+                                    ${formData.keyword.trim() 
+                                        ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/30' 
+                                        : 'bg-slate-800 text-slate-600 cursor-not-allowed'}
+                                `}
+                            >
+                                <ArrowRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Visual Hints */}
+                <div className="flex justify-center gap-4 text-xs text-slate-600">
+                    <span className="flex items-center gap-1"><Sparkles className="w-3 h-3"/> AI Otimizada</span>
+                    <span className="flex items-center gap-1"><Target className="w-3 h-3"/> Links Naturais</span>
+                </div>
+            </div>
+        </div>
+      );
+  }
+
+  // STEP 1: HOST NICHE
+  if (step === 1) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 animate-in slide-in-from-right duration-300">
+            <div className="w-full max-w-xl space-y-6">
+                <button onClick={handleBack} className="text-slate-500 hover:text-white flex items-center gap-2 text-sm mb-8 transition-colors">
+                    <ChevronLeft className="w-4 h-4" /> Voltar
+                </button>
+
+                <div className="space-y-2">
+                    <span className="text-indigo-400 text-xs font-bold tracking-wider uppercase">Passo 1 de 2</span>
+                    <h2 className="text-3xl font-bold text-white">Qual o contexto?</h2>
+                    <p className="text-slate-400">Em que tipo de site este artigo será publicado? Isso ajuda a ajustar o tom de voz.</p>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-700 rounded-xl p-2 flex items-center shadow-lg focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
+                    <div className="p-3 bg-slate-800 rounded-lg mr-3">
+                        <AtSign className="w-5 h-5 text-indigo-400" />
+                    </div>
+                    <input 
+                        name="hostNiche"
+                        value={formData.hostNiche}
+                        onChange={handleChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Ex: Blog de Tecnologia, Portal de Notícias, Site de Moda..."
+                        className="bg-transparent w-full text-lg outline-none text-white placeholder:text-slate-600 h-12"
+                        autoFocus
+                    />
+                    <button
+                        onClick={() => handleNext()}
+                        disabled={!formData.hostNiche.trim()}
+                        className={`mx-2 p-2 rounded-lg transition-colors ${formData.hostNiche.trim() ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-slate-800 text-slate-600'}`}
+                    >
+                        <ArrowRight className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-800/50">
+                    <div className="text-xs text-slate-500 mb-1">Tema escolhido:</div>
+                    <div className="text-slate-300 font-medium">{formData.keyword}</div>
+                </div>
+            </div>
+        </div>
+      );
+  }
+
+  // STEP 2: LINK DETAILS (Final)
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 pb-4">
-      
-      {/* SEÇÃO 1: O ASSUNTO (Purple) */}
-      <div className="relative pl-6 border-l-2 border-purple-500/30 hover:border-purple-500 transition-colors">
-        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-slate-900 border-2 border-purple-500"></div>
-        
-        <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
-            <span className="text-purple-400">01.</span> O Assunto
-        </h3>
-        
-        <div>
-            <label className={labelClasses}>Palavra-chave Principal</label>
-            <div className="relative">
-                <Sparkles className="absolute left-3 top-3 w-4 h-4 text-purple-400" />
-                <input
-                    required
-                    name="keyword"
-                    value={formData.keyword}
-                    onChange={handleChange}
-                    placeholder="Ex: Benefícios da IA no Marketing"
-                    className={`${inputClasses} focus:ring-purple-500 text-base py-3`}
-                />
-            </div>
-            <p className="mt-2 text-[11px] text-slate-500">
-                Este será o tema central do artigo. O título será gerado com base nisso.
-            </p>
-        </div>
-      </div>
+    <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 animate-in slide-in-from-right duration-300">
+        <div className="w-full max-w-xl space-y-6">
+            <button onClick={handleBack} className="text-slate-500 hover:text-white flex items-center gap-2 text-sm mb-8 transition-colors">
+                <ChevronLeft className="w-4 h-4" /> Voltar
+            </button>
 
-      {/* SEÇÃO 2: O CONTEXTO (Blue) */}
-      <div className="relative pl-6 border-l-2 border-blue-500/30 hover:border-blue-500 transition-colors">
-        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-slate-900 border-2 border-blue-500"></div>
-        
-        <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
-            <span className="text-blue-400">02.</span> Onde será publicado?
-        </h3>
-        
-        <div>
-            <label className={labelClasses}>Nicho do Site Host (Contexto)</label>
-            <div className="relative">
-                <AtSign className="absolute left-3 top-3 w-4 h-4 text-blue-400" />
-                <input
-                    required
-                    name="hostNiche"
-                    value={formData.hostNiche}
-                    onChange={handleChange}
-                    placeholder="Ex: Tecnologia e Inovação, Blog de Culinária, Portal de Notícias..."
-                    className={`${inputClasses} focus:ring-blue-500`}
-                />
+            <div className="space-y-2">
+                <span className="text-emerald-400 text-xs font-bold tracking-wider uppercase">Passo Final</span>
+                <h2 className="text-3xl font-bold text-white">Configuração do Link</h2>
+                <p className="text-slate-400">Defina para onde o artigo deve apontar e como o link deve aparecer.</p>
             </div>
-            <p className="mt-2 text-[11px] text-slate-500">
-                A IA usará isso para adaptar o tom de voz e a audiência do artigo.
-            </p>
-        </div>
-      </div>
 
-      {/* SEÇÃO 3: O OBJETIVO (Emerald/Green) */}
-      <div className="relative pl-6 border-l-2 border-emerald-500/30 hover:border-emerald-500 transition-colors">
-        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-slate-900 border-2 border-emerald-500"></div>
-        
-        <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
-            <span className="text-emerald-400">03.</span> O Backlink (Objetivo)
-        </h3>
-        
-        <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                     <label className={labelClasses}>Nicho do seu Link</label>
-                     <div className="relative">
-                        <Target className="absolute left-3 top-3 w-4 h-4 text-emerald-400" />
+            <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-slate-500 ml-1">Nicho do seu Link</label>
                         <input
-                            required
                             name="targetNiche"
                             value={formData.targetNiche}
                             onChange={handleChange}
                             placeholder="Ex: Software SaaS"
-                            className={`${inputClasses} focus:ring-emerald-500`}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-200 focus:border-emerald-500 outline-none transition-colors"
                         />
-                     </div>
-                </div>
-                <div>
-                    <label className={labelClasses}>Texto Âncora (Exato)</label>
-                    <div className="relative">
-                        <Type className="absolute left-3 top-3 w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-slate-500 ml-1">Texto Âncora (Exato)</label>
                         <input
-                            required
                             name="anchorText"
                             value={formData.anchorText}
                             onChange={handleChange}
-                            placeholder="Ex: ferramenta de automação"
-                            className={`${inputClasses} focus:ring-emerald-500`}
+                            placeholder="Ex: melhor ferramenta"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-slate-200 focus:border-emerald-500 outline-none transition-colors"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-500 ml-1">URL de Destino</label>
+                    <div className="relative">
+                        <LinkIcon className="absolute left-3 top-3.5 w-4 h-4 text-emerald-500" />
+                        <input
+                            name="targetLink"
+                            value={formData.targetLink}
+                            onChange={handleChange}
+                            placeholder="https://seu-site.com/artigo"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-slate-200 focus:border-emerald-500 outline-none transition-colors"
                         />
                     </div>
                 </div>
             </div>
-            
-            <div>
-                <label className={labelClasses}>URL de Destino</label>
-                <div className="relative">
-                    <LinkIcon className="absolute left-3 top-3 w-4 h-4 text-emerald-400" />
-                    <input
-                        required
-                        name="targetLink"
-                        value={formData.targetLink}
-                        onChange={handleChange}
-                        placeholder="https://seu-site.com/pagina-alvo"
-                        className={`${inputClasses} focus:ring-emerald-500 text-emerald-300`}
-                    />
-                </div>
-            </div>
-        </div>
-      </div>
 
-      <div className="pt-6">
-        <button
-            type="submit"
-            disabled={isLoading}
-            className={`
-                w-full group relative flex items-center justify-center gap-3 px-8 py-4 rounded-xl font-bold text-white shadow-lg transition-all
-                ${isLoading 
-                    ? 'bg-slate-800 cursor-wait opacity-70' 
-                    : 'bg-indigo-600 hover:bg-indigo-500 hover:shadow-indigo-500/20 hover:-translate-y-0.5'
-                }
-            `}
-        >
-            {isLoading ? (
-                <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-400 border-t-white"></div>
-                    <span className="text-slate-300">Escrevendo Artigo...</span>
-                </>
-            ) : (
-                <>
-                    <span>Gerar Guest Post</span>
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </>
-            )}
-        </button>
-      </div>
-    </form>
+            <button
+                onClick={handleFinalSubmit}
+                disabled={isLoading || !formData.targetLink || !formData.anchorText}
+                className={`
+                    w-full mt-6 py-4 rounded-xl font-bold text-white shadow-xl flex items-center justify-center gap-3 text-lg transition-all hover:scale-[1.02]
+                    ${isLoading 
+                        ? 'bg-slate-800 cursor-wait opacity-70' 
+                        : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500'}
+                `}
+            >
+                {isLoading ? (
+                    <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
+                        <span>Escrevendo Artigo...</span>
+                    </>
+                ) : (
+                    <>
+                        <span>Gerar Artigo Agora</span>
+                        <Send className="w-5 h-5" />
+                    </>
+                )}
+            </button>
+        </div>
+    </div>
   );
 };
 

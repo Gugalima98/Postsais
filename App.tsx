@@ -346,32 +346,22 @@ const App: React.FC = () => {
             );
         }
         return (
-          <div className="max-w-3xl mx-auto h-full flex flex-col justify-center py-10 relative">
-            <div className="mb-8 text-center">
-                <div className="inline-block p-3 rounded-2xl bg-indigo-500/10 mb-4">
-                    <PenTool className="w-8 h-8 text-indigo-400" />
-                </div>
-                <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Criar Novo Guest Post</h2>
-                <p className="text-slate-400 max-w-md mx-auto mb-6">
-                    Preencha as informações abaixo e nossa IA criará um artigo completo, otimizado e formatado em segundos.
-                </p>
-                
-                <button 
-                    onClick={() => setIsSheetModalOpen(true)}
-                    className={`inline-flex items-center gap-2 px-4 py-2 ${isDemoMode ? 'bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border-purple-600/30' : 'bg-green-600/10 hover:bg-green-600/20 text-green-400 border-green-600/30'} border rounded-lg text-sm font-medium transition-all hover:scale-105`}
-                >
-                    {isDemoMode ? <FlaskConical className="w-4 h-4" /> : <FileSpreadsheet className="w-4 h-4" />}
-                    {isDemoMode ? 'Testar Geração em Massa (Demo)' : 'Importar Google Sheet'}
+          <div className="h-full flex flex-col justify-center relative">
+            {/* NO Header here anymore. PostForm handles the title/greeting */}
+            
+            <PostForm 
+                onSubmit={handleGenerate} 
+                isLoading={isLoading} 
+                onOpenBatchImport={() => setIsSheetModalOpen(true)}
+            />
+            
+            {/* Minimal footer link */}
+            <div className="fixed bottom-4 left-0 right-0 flex justify-center pointer-events-none">
+                 <button onClick={() => setMode(AppMode.SETTINGS)} className="pointer-events-auto text-[10px] text-slate-600 hover:text-indigo-400 flex items-center gap-2 transition-colors">
+                    <Cloud className="w-3 h-3" /> Configurar Drive
                 </button>
             </div>
-            
-            <PostForm onSubmit={handleGenerate} isLoading={isLoading} />
-            
-            <div className="mt-8 flex justify-center">
-                <button onClick={() => setMode(AppMode.SETTINGS)} className="text-xs text-slate-500 hover:text-indigo-400 flex items-center gap-2 transition-colors">
-                    <Cloud className="w-4 h-4" /> Configurar Google Drive
-                </button>
-            </div>
+
             {isDemoMode && (
                 <div className="absolute top-0 right-0 m-4 text-xs font-bold text-indigo-400 bg-indigo-900/30 px-3 py-1 rounded-full border border-indigo-500/30 flex items-center gap-2">
                     <FlaskConical className="w-3 h-3"/> MODO DEMO
@@ -383,7 +373,7 @@ const App: React.FC = () => {
 
     if (mode === AppMode.HISTORY) {
         return (
-          <div className="space-y-6 pt-6">
+          <div className="space-y-6 pt-12 md:pt-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-white">Histórico</h2>
                 <button onClick={() => setArticles([])} className="text-red-400 hover:text-red-300 text-sm flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-red-900/20 transition-colors">
