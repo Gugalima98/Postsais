@@ -167,12 +167,23 @@ const App: React.FC = () => {
             };
             
             setArticles(prev => [newArticle, ...prev]);
-            addLog(`Concluído: ${item.request.keyword}`);
+            addLog(`Sucesso: "${item.request.keyword}" - Link salvo na planilha.`);
 
         } catch (error: any) {
             console.error(error);
-            addLog(`Erro em "${item.request.keyword}": ${error.message}`);
+            // Error handling improvements
+            let errorMsg = error.message || "Erro desconhecido";
+            // Clean up common error prefixes
+            if (errorMsg.includes('GoogleGenAIError:')) errorMsg = errorMsg.split('GoogleGenAIError:')[1].trim();
+            addLog(`Erro em "${item.request.keyword}": ${errorMsg}`);
         } finally {
+            
+            // IMPORTANT: Add a delay to prevent API Rate Limiting (429)
+            // If we are not in demo mode and there are more items, wait 3 seconds
+            if (!isDemoMode && queue.length > 1) {
+                await delay(3000);
+            }
+
             // Remove item from queue and update progress counts
             setQueue(prev => prev.slice(1));
             setBatchProgress(prev => ({

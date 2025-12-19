@@ -41,9 +41,15 @@ export const generateGuestPostContent = async (req: GuestPostRequest): Promise<s
       }
     });
 
-    return response.text || "Erro: Nenhum conteúdo gerado.";
-  } catch (error) {
+    if (!response.text) {
+        throw new Error("API retornou resposta vazia ou bloqueada.");
+    }
+
+    return response.text;
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
-    throw new Error("Falha ao gerar o conteúdo do artigo.");
+    // Return the actual error message from the provider
+    const msg = error.message || error.toString();
+    throw new Error(msg);
   }
 };

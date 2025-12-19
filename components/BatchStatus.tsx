@@ -16,7 +16,7 @@ const BatchStatus: React.FC<BatchStatusProps> = ({ progress, onClose }) => {
   const percentage = progress.total > 0 ? (progress.processed / progress.total) * 100 : 0;
 
   return (
-    <div className={`fixed bottom-4 right-4 z-50 transition-all duration-300 ${isExpanded ? 'w-80' : 'w-64'}`}>
+    <div className={`fixed bottom-4 right-4 z-50 transition-all duration-300 ${isExpanded ? 'w-96' : 'w-72'}`}>
       <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl overflow-hidden flex flex-col">
         
         {/* Header */}
@@ -65,13 +65,21 @@ const BatchStatus: React.FC<BatchStatusProps> = ({ progress, onClose }) => {
                 )}
 
                 {/* Mini Log */}
-                <div className="h-24 overflow-y-auto bg-black/40 rounded border border-slate-800 p-2 space-y-1 mb-3 custom-scrollbar">
+                <div className="h-32 overflow-y-auto bg-black/40 rounded border border-slate-800 p-2 space-y-1 mb-3 custom-scrollbar">
                     {progress.logs.length === 0 && <span className="text-[10px] text-slate-600">Iniciando...</span>}
-                    {progress.logs.slice().reverse().map((log, i) => (
-                        <div key={i} className="text-[10px] text-slate-400 truncate border-b border-slate-800/50 pb-1 last:border-0">
-                            {log}
-                        </div>
-                    ))}
+                    {progress.logs.slice().reverse().map((log, i) => {
+                        const isError = log.includes('Erro') || log.includes('Falha');
+                        return (
+                            <div 
+                                key={i} 
+                                className={`text-[10px] border-b border-slate-800/50 pb-1 last:border-0 leading-tight ${
+                                    isError ? 'text-red-400 font-medium' : 'text-slate-400'
+                                }`}
+                            >
+                                {log}
+                            </div>
+                        );
+                    })}
                 </div>
 
                 {isComplete && (
