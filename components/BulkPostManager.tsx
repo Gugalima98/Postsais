@@ -97,6 +97,11 @@ const BulkPostManager: React.FC<BulkPostManagerProps> = ({ onOpenImportModal, im
             for (let i = 0; i < importedData.rows.length; i++) {
                 const row = importedData.rows[i];
                 
+                // SKIPPING LOGIC: If Column D (Index 3) has content, skip this row
+                if (row[3] && row[3].trim().length > 0) {
+                    continue;
+                }
+
                 // Allow row if it has Keyword OR DocLink. Previously required row[0].
                 const keyword = row[0]?.trim() || '';
                 const siteUrl = row[1]?.trim() || '';
