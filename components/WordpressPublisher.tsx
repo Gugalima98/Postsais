@@ -3,11 +3,11 @@ import ReactMarkdown from 'react-markdown';
 import { 
     FileText, Link as LinkIcon, ArrowRight, Globe, Layout, Type, 
     Image as ImageIcon, CheckCircle, Loader2, Bold, Italic, 
-    List, Heading2, Heading3, Quote, Eye, Code, Plus, Server, User, Lock, X, RefreshCw, AlertTriangle
+    List, Heading2, Heading3, Quote, Eye, Code, Plus, Server, User, Lock, X, AlertTriangle, ExternalLink
 } from 'lucide-react';
 import { extractSheetId } from '../services/sheets';
 import { getGoogleDocContent } from '../services/drive';
-import { fetchWpCategories } from '../services/wordpress';
+import { fetchWpCategories, createWpPost } from '../services/wordpress';
 import { WordpressSite, WordpressCategory } from '../types';
 
 const WordpressPublisher: React.FC = () => {
@@ -34,8 +34,10 @@ const WordpressPublisher: React.FC = () => {
   const [categoryError, setCategoryError] = useState('');
 
   // UI State
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // For Import
+  const [publishingStatus, setPublishingStatus] = useState<'idle' | 'drafting' | 'publishing'>('idle');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState<{msg: string, link: string} | null>(null);
 
   // Editor Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -126,6 +128,43 @@ const WordpressPublisher: React.FC = () => {
   };
 
   const getSelectedSite = () => sites.find(s => s.id === selectedSiteId);
+
+  // --- PUBLISHING LOGIC ---
+  const handlePublish = async (status: 'publish' | 'draft') => {
+      setError('');
+      setSuccessMsg(null);
+      
+      const site = getSelectedSite();
+      if (!site) {
+          setError('Selecione um site para publicar.');
+          return;
+      }
+      if (!title.trim() || !content.trim()) {
+          setError('Título e conteúdo são obrigatórios.');
+          return;
+      }
+
+      setPublishingStatus(status === 'publish' ? 'publishing' : 'drafting');
+
+      try {
+          const result = await createWpPost(site, {
+              title,
+              content,
+              status,
+              slug,
+              categories: selectedCategoryId ? [Number(selectedCategoryId)] : []
+          });
+
+          setSuccessMsg({
+              msg: status === 'publish' ? 'Post publicado com sucesso!' : 'Rascunho salvo com sucesso!',
+              link: result.link
+          });
+      } catch (err: any) {
+          setError(err.message);
+      } finally {
+          setPublishingStatus('idle');
+      }
+  };
 
   // --- MARKDOWN RENDER CONFIG ---
   const MarkdownComponents = {
@@ -431,19 +470,50 @@ const WordpressPublisher: React.FC = () => {
                 </h2>
             </div>
             <div className="flex gap-3">
-                <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors">
+                <button 
+                    onClick={() => handlePublish('draft')}
+                    disabled={publishingStatus !== 'idle'}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                    {publishingStatus === 'drafting' && <Loader2 className="w-4 h-4 animate-spin"/>}
                     Salvar Rascunho
                 </button>
-                <button className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20">
-                    <CheckCircle className="w-4 h-4" /> Publicar
+                <button 
+                    onClick={() => handlePublish('publish')}
+                    disabled={publishingStatus !== 'idle'}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
+                >
+                    {publishingStatus === 'publishing' ? <Loader2 className="w-4 h-4 animate-spin"/> : <CheckCircle className="w-4 h-4" />} 
+                    Publicar
                 </button>
             </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
             {/* Main Content Editor */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-950 flex flex-col items-center pt-8 pb-20">
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-950 flex flex-col items-center pt-8 pb-20 relative">
                 
+                {/* STATUS NOTIFICATIONS */}
+                {error && (
+                    <div className="absolute top-4 z-20 bg-red-500 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-3 animate-bounce-in">
+                        <AlertTriangle className="w-5 h-5"/>
+                        <span className="font-medium text-sm">{error}</span>
+                        <button onClick={() => setError('')}><X className="w-4 h-4 opacity-70"/></button>
+                    </div>
+                )}
+                {successMsg && (
+                    <div className="absolute top-4 z-20 bg-green-500 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-3 animate-bounce-in">
+                        <CheckCircle className="w-5 h-5"/>
+                        <span className="font-medium text-sm">{successMsg.msg}</span>
+                        {successMsg.link && (
+                             <a href={successMsg.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded text-xs hover:bg-white/30 transition-colors">
+                                Ver Post <ExternalLink className="w-3 h-3"/>
+                             </a>
+                        )}
+                        <button onClick={() => setSuccessMsg(null)}><X className="w-4 h-4 opacity-70"/></button>
+                    </div>
+                )}
+
                 {/* Title Input */}
                 <div className="w-full max-w-3xl px-8 mb-6">
                     <input 
