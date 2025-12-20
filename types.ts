@@ -21,7 +21,8 @@ export interface GeneratedArticle {
 export enum AppMode {
   SINGLE = 'SINGLE',
   HISTORY = 'HISTORY',
-  SETTINGS = 'SETTINGS'
+  SETTINGS = 'SETTINGS',
+  WORDPRESS = 'WORDPRESS'
 }
 
 export interface QueueItem {

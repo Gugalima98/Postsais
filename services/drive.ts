@@ -53,3 +53,20 @@ export const convertMarkdownToHtml = (markdown: string, title: string) => {
   
     return await response.json(); // Returns { id, webViewLink }
   };
+
+  export const getGoogleDocContent = async (accessToken: string, fileId: string): Promise<string> => {
+    // Export the Google Doc as plain text to preserve markdown-like structure or just content
+    // Alternatively 'text/html' could be used, but text/plain is safer for raw editing initially.
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=text/plain`, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`
+        }
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Falha ao ler o Google Doc');
+    }
+
+    return await response.text();
+  };

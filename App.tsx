@@ -5,6 +5,7 @@ import ArticlePreview from './components/ArticlePreview';
 import Settings from './components/Settings';
 import SheetImportModal from './components/SheetImportModal';
 import BatchStatus from './components/BatchStatus';
+import WordpressPublisher from './components/WordpressPublisher';
 import { generateGuestPostContent } from './services/gemini';
 import { uploadToDrive, convertMarkdownToHtml } from './services/drive';
 import { updateSheetCell } from './services/sheets';
@@ -333,6 +334,11 @@ const App: React.FC = () => {
           }} />;
     }
 
+    // NEW MODE HANDLER
+    if (mode === AppMode.WORDPRESS) {
+        return <WordpressPublisher />;
+    }
+
     if (mode === AppMode.SINGLE) {
         if (activeArticle) {
             return (
@@ -415,7 +421,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout currentMode={mode} setMode={setMode} isFullWidth={mode === AppMode.SINGLE && activeArticle !== null}>
+    <Layout currentMode={mode} setMode={setMode} isFullWidth={mode === AppMode.SINGLE && activeArticle !== null || mode === AppMode.WORDPRESS}>
         {notification && (
             <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce-in ${notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
                 {notification.type === 'success' ? <CheckCircle2 className="w-5 h-5"/> : <AlertTriangle className="w-5 h-5"/>}

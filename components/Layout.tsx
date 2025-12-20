@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppMode } from '../types';
-import { PenTool, History, Settings, Zap, Menu, X } from 'lucide-react';
+import { PenTool, History, Settings, Zap, Menu, X, Globe } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -77,6 +77,23 @@ const Layout: React.FC<LayoutProps> = ({ children, currentMode, setMode, isFullW
           >
             <History className="w-5 h-5" />
             <span className="font-medium">Histórico</span>
+          </button>
+
+          <div className="pt-4 pb-2">
+            <div className="h-px bg-slate-800 mx-2 mb-4"></div>
+            <span className="text-xs font-semibold text-slate-500 px-4 uppercase tracking-wider">Publicação</span>
+          </div>
+
+          <button
+            onClick={() => handleModeChange(AppMode.WORDPRESS)}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+              currentMode === AppMode.WORDPRESS
+                ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20'
+                : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            <Globe className="w-5 h-5" />
+            <span className="font-medium">Publicar WP</span>
           </button>
         </nav>
 
