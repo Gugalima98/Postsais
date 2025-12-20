@@ -50,3 +50,14 @@ export interface WordpressSite {
     username: string;
     appPassword: string;
 }
+
+export interface WordpressCategory {
+    id: number;
+    count: number;
+    description: string;
+    link: string;
+    name: string;
+    slug: string;
+    taxonomy: string;
+    parent: number;
+}

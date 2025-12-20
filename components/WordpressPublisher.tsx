@@ -3,11 +3,12 @@ import ReactMarkdown from 'react-markdown';
 import { 
     FileText, Link as LinkIcon, ArrowRight, Globe, Layout, Type, 
     Image as ImageIcon, CheckCircle, Loader2, Bold, Italic, 
-    List, Heading2, Heading3, Quote, Eye, Code, Plus, Server, User, Lock, X
+    List, Heading2, Heading3, Quote, Eye, Code, Plus, Server, User, Lock, X, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { extractSheetId } from '../services/sheets';
 import { getGoogleDocContent } from '../services/drive';
-import { WordpressSite } from '../types';
+import { fetchWpCategories } from '../services/wordpress';
+import { WordpressSite, WordpressCategory } from '../types';
 
 const WordpressPublisher: React.FC = () => {
   const [step, setStep] = useState<'input' | 'editor'>('input');
@@ -18,6 +19,7 @@ const WordpressPublisher: React.FC = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [gdocLink, setGdocLink] = useState('');
+  const [slug, setSlug] = useState('');
   
   // Site Management State
   const [sites, setSites] = useState<WordpressSite[]>([]);
@@ -25,6 +27,12 @@ const WordpressPublisher: React.FC = () => {
   const [isAddSiteModalOpen, setIsAddSiteModalOpen] = useState(false);
   const [newSite, setNewSite] = useState({ name: '', url: '', username: '', appPassword: '' });
   
+  // Categories State
+  const [categories, setCategories] = useState<WordpressCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | ''>('');
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [categoryError, setCategoryError] = useState('');
+
   // UI State
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -48,6 +56,50 @@ const WordpressPublisher: React.FC = () => {
           console.error("Erro ao carregar sites", e);
       }
   }, []);
+
+  // Update slug automatically when title changes (if not manually edited logic could be added)
+  useEffect(() => {
+      if (title) {
+          setSlug(title.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
+            .replace(/[^a-z0-9]+/g, '-') // replace non-alphanum with dash
+            .replace(/^-+|-+$/g, '') // remove leading/trailing dashes
+          );
+      }
+  }, [title]);
+
+  // --- FETCH CATEGORIES WHEN SITE CHANGES ---
+  useEffect(() => {
+    const fetchCats = async () => {
+        setCategories([]);
+        setSelectedCategoryId('');
+        setCategoryError('');
+
+        if (!selectedSiteId) return;
+
+        const site = sites.find(s => s.id === selectedSiteId);
+        if (!site) return;
+
+        setIsLoadingCategories(true);
+        try {
+            const cats = await fetchWpCategories(site);
+            setCategories(cats);
+            if (cats.length > 0) {
+                // Try to find 'Uncategorized' or just pick the first one
+                const defaultCat = cats.find(c => c.slug === 'sem-categoria' || c.slug === 'uncategorized') || cats[0];
+                setSelectedCategoryId(defaultCat.id);
+            }
+        } catch (err: any) {
+            console.error(err);
+            setCategoryError('Falha ao buscar categorias. Verifique CORS ou credenciais.');
+        } finally {
+            setIsLoadingCategories(false);
+        }
+    };
+
+    fetchCats();
+  }, [selectedSiteId, sites]);
+
 
   // --- SITE MANAGEMENT ---
   const handleSaveNewSite = () => {
@@ -506,15 +558,33 @@ const WordpressPublisher: React.FC = () => {
 
                     <div className="h-px bg-slate-800 my-4"></div>
 
+                    {/* Category Selector */}
                     <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
-                            <Layout className="w-4 h-4 text-slate-500" /> Categoria
-                        </label>
-                        <select className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-300 outline-none">
-                            <option>Sem Categoria</option>
-                            <option>Tecnologia</option>
-                            <option>Marketing</option>
+                        <div className="flex justify-between items-center">
+                            <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                                <Layout className="w-4 h-4 text-slate-500" /> Categoria
+                            </label>
+                            {isLoadingCategories && <Loader2 className="w-3 h-3 text-slate-500 animate-spin" />}
+                        </div>
+                        
+                        <select 
+                            className={`w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-300 outline-none focus:border-blue-500 ${!selectedSiteId || categories.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            value={selectedCategoryId}
+                            onChange={(e) => setSelectedCategoryId(Number(e.target.value))}
+                            disabled={!selectedSiteId || categories.length === 0 || isLoadingCategories}
+                        >
+                            {isLoadingCategories && <option>Carregando categorias...</option>}
+                            {!isLoadingCategories && categories.length === 0 && <option>Nenhuma categoria encontrada</option>}
+                            {categories.map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
                         </select>
+                        
+                        {categoryError && (
+                            <div className="text-[10px] text-red-400 flex items-center gap-1 mt-1">
+                                <AlertTriangle className="w-3 h-3"/> {categoryError}
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-2">
@@ -524,7 +594,8 @@ const WordpressPublisher: React.FC = () => {
                         <input 
                             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-300 outline-none" 
                             placeholder="url-amigavel" 
-                            defaultValue={title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+                            value={slug}
+                            onChange={(e) => setSlug(e.target.value)}
                         />
                     </div>
 
