@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { 
     FileText, Link as LinkIcon, ArrowRight, Globe, Layout, Type, 
     Image as ImageIcon, CheckCircle, Loader2, Bold, Italic, 
-    List, Heading1, Heading2, Heading3, Quote, Undo, Redo 
+    List, Heading2, Heading3, Quote, Eye, Code
 } from 'lucide-react';
 import { extractSheetId } from '../services/sheets';
 import { getGoogleDocContent } from '../services/drive';
@@ -10,6 +11,7 @@ import { getGoogleDocContent } from '../services/drive';
 const WordpressPublisher: React.FC = () => {
   const [step, setStep] = useState<'input' | 'editor'>('input');
   const [importMode, setImportMode] = useState<'text' | 'gdoc'>('text');
+  const [editorMode, setEditorMode] = useState<'visual' | 'text'>('text');
   
   // Data State
   const [title, setTitle] = useState('');
@@ -22,6 +24,22 @@ const WordpressPublisher: React.FC = () => {
 
   // Editor Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // --- MARKDOWN RENDER CONFIG (Same as ArticlePreview) ---
+  const MarkdownComponents = {
+    h1: ({...props}) => <h1 className="text-3xl font-bold text-white mb-4 border-b border-slate-700 pb-2" {...props} />, 
+    h2: ({...props}) => <h2 className="text-2xl font-bold text-slate-100 mt-8 mb-4" {...props} />,
+    h3: ({...props}) => <h3 className="text-xl font-semibold text-indigo-300 mt-6 mb-3" {...props} />,
+    p: ({...props}) => <p className="text-slate-300 text-lg leading-7 mb-5" {...props} />,
+    ul: ({...props}) => <ul className="list-disc list-outside ml-6 mb-5 space-y-1 text-slate-300 text-lg" {...props} />,
+    ol: ({...props}) => <ol className="list-decimal list-outside ml-6 mb-5 space-y-1 text-slate-300 text-lg" {...props} />,
+    li: ({...props}) => <li className="pl-1" {...props} />,
+    a: ({...props}) => <a className="text-emerald-400 underline underline-offset-4 decoration-emerald-500/30 hover:text-emerald-300" target="_blank" {...props} />,
+    blockquote: ({...props}) => (
+        <blockquote className="border-l-4 border-indigo-500 bg-slate-900/50 rounded-r-lg pl-4 py-3 my-6 text-slate-400 italic" {...props} />
+    ),
+    strong: ({...props}) => <strong className="text-white font-bold" {...props} />,
+  };
 
   // --- EDITOR TOOLBAR LOGIC ---
   const insertFormat = (prefix: string, suffix: string = '') => {
@@ -87,13 +105,15 @@ const WordpressPublisher: React.FC = () => {
                     const titleMatch = markdown.match(/^# (.*$)/m);
                     if (titleMatch) {
                         extractedTitle = titleMatch[1].trim();
-                        // Optional: Remove the H1 from the body so it doesn't duplicate in WP Title + Body
+                        // Remove the H1 from the body
                         extractedContent = markdown.replace(/^# .*$/m, '').trim();
                     }
 
                     setTitle(extractedTitle);
                     setContent(extractedContent);
                     setStep('editor');
+                    // Automatically switch to Visual to show the "Visualmente igual" request
+                    setEditorMode('visual'); 
                 } catch (err: any) {
                     setError('Falha ao importar: ' + err.message);
                 } finally {
@@ -258,44 +278,73 @@ const WordpressPublisher: React.FC = () => {
                 {/* Editor Surface */}
                 <div className="w-full max-w-3xl flex-1 px-8 flex flex-col">
                     
-                    {/* Formatting Toolbar */}
-                    <div className="sticky top-0 z-10 bg-slate-900 border border-slate-700 rounded-t-lg p-2 flex items-center gap-1 shadow-md mb-0">
-                        <button onClick={() => insertFormat('## ')} title="Título 2" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
-                            <Heading2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => insertFormat('### ')} title="Título 3" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
-                            <Heading3 className="w-4 h-4" />
-                        </button>
-                        <div className="w-px h-5 bg-slate-700 mx-1"></div>
-                        <button onClick={() => insertFormat('**', '**')} title="Negrito" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
-                            <Bold className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => insertFormat('*', '*')} title="Itálico" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
-                            <Italic className="w-4 h-4" />
-                        </button>
-                         <button onClick={() => insertFormat('> ')} title="Citação" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
-                            <Quote className="w-4 h-4" />
-                        </button>
-                        <div className="w-px h-5 bg-slate-700 mx-1"></div>
-                        <button onClick={() => insertFormat('- ')} title="Lista" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
-                            <List className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => insertFormat('[', '](url)')} title="Link" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
-                            <LinkIcon className="w-4 h-4" />
-                        </button>
+                    {/* Visual/Text Toggle (WP Classic Style) */}
+                    <div className="flex items-center justify-end mb-0">
+                         <div className="flex bg-slate-900 border-t border-x border-slate-700 rounded-t-lg overflow-hidden">
+                             <button 
+                                onClick={() => setEditorMode('visual')}
+                                className={`px-4 py-2 text-xs font-bold flex items-center gap-2 ${editorMode === 'visual' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                             >
+                                <Eye className="w-3 h-3" /> Visual
+                             </button>
+                             <button 
+                                onClick={() => setEditorMode('text')}
+                                className={`px-4 py-2 text-xs font-bold flex items-center gap-2 ${editorMode === 'text' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                             >
+                                <Code className="w-3 h-3" /> Texto
+                             </button>
+                         </div>
                     </div>
 
-                    {/* Textarea disguised as Editor */}
-                    <textarea 
-                        ref={textareaRef}
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        className="w-full min-h-[600px] flex-1 bg-slate-900/50 border-x border-b border-slate-700 rounded-b-lg p-6 text-lg text-slate-300 placeholder:text-slate-600 outline-none resize-y leading-relaxed font-sans focus:bg-slate-900 focus:ring-1 focus:ring-slate-700 transition-colors"
-                        placeholder="Comece a escrever seu post..."
-                    />
+                    {editorMode === 'text' ? (
+                        <>
+                            {/* Formatting Toolbar - Only visible in Text Mode */}
+                            <div className="sticky top-0 z-10 bg-slate-900 border border-slate-700 rounded-tl-lg rounded-bl-lg p-2 flex items-center gap-1 shadow-md mb-0">
+                                <button onClick={() => insertFormat('## ')} title="Título 2" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
+                                    <Heading2 className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => insertFormat('### ')} title="Título 3" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
+                                    <Heading3 className="w-4 h-4" />
+                                </button>
+                                <div className="w-px h-5 bg-slate-700 mx-1"></div>
+                                <button onClick={() => insertFormat('**', '**')} title="Negrito" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
+                                    <Bold className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => insertFormat('*', '*')} title="Itálico" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
+                                    <Italic className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => insertFormat('> ')} title="Citação" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
+                                    <Quote className="w-4 h-4" />
+                                </button>
+                                <div className="w-px h-5 bg-slate-700 mx-1"></div>
+                                <button onClick={() => insertFormat('- ')} title="Lista" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
+                                    <List className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => insertFormat('[', '](url)')} title="Link" className="p-2 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors">
+                                    <LinkIcon className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {/* Raw Markdown Editor */}
+                            <textarea 
+                                ref={textareaRef}
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                className="w-full min-h-[600px] flex-1 bg-slate-900/50 border-x border-b border-slate-700 rounded-b-lg p-6 text-lg text-slate-300 placeholder:text-slate-600 outline-none resize-y leading-relaxed font-mono focus:bg-slate-900 focus:ring-1 focus:ring-slate-700 transition-colors"
+                                placeholder="Comece a escrever seu post..."
+                            />
+                        </>
+                    ) : (
+                        /* Visual Preview Mode */
+                        <div className="w-full min-h-[600px] flex-1 bg-slate-900/30 border border-slate-700 rounded-b-lg rounded-tl-lg p-8 custom-scrollbar">
+                             <ReactMarkdown components={MarkdownComponents}>
+                                {content || '*Nenhum conteúdo ainda...*'}
+                             </ReactMarkdown>
+                        </div>
+                    )}
                     
                     <p className="text-xs text-slate-500 mt-2 text-right">
-                        Use Markdown ou a barra de ferramentas para formatar.
+                        {editorMode === 'text' ? 'Editando em Markdown.' : 'Visualizando resultado final.'}
                     </p>
                 </div>
             </div>

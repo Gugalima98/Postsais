@@ -54,54 +54,65 @@ export const convertMarkdownToHtml = (markdown: string, title: string) => {
     return await response.json(); // Returns { id, webViewLink }
   };
 
-  // Basic HTML to Markdown converter to preserve Hierarchy from Google Docs
+  // Helper to decode HTML entities (e.g. &eacute; -> é)
+  const decodeHTMLEntities = (text: string) => {
+      const txt = document.createElement("textarea");
+      txt.innerHTML = text;
+      return txt.value;
+  };
+
+  // HTML to Markdown converter preserving Hierarchy and decoding entities
   const htmlToMarkdown = (html: string): string => {
       let md = html;
 
-      // Clean up Google Docs span mess (simplified)
+      // 1. Clean up Google Docs structure wrappers
       md = md.replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '');
       md = md.replace(/<body[^>]*>/g, '').replace(/<\/body>/g, '');
       md = md.replace(/<html[^>]*>/g, '').replace(/<\/html>/g, '');
-      md = md.replace(/<head>.*<\/head>/s, ''); // Remove head
+      md = md.replace(/<head>.*<\/head>/s, ''); 
+      md = md.replace(/<style[^>]*>.*<\/style>/s, ''); 
 
-      // Headers
+      // 2. Convert Headers (Preserve Hierarchy)
       md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
       md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
       md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
       md = md.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n');
 
-      // Formatting
+      // 3. Convert Formatting
       md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
       md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
       md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
       md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
 
-      // Links
+      // 4. Convert Links
       md = md.replace(/<a[^>]+href="([^"]+)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
 
-      // Lists (Basic support)
+      // 5. Convert Lists
       md = md.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n');
       md = md.replace(/<ul[^>]*>/gi, '\n');
       md = md.replace(/<\/ul>/gi, '\n');
       md = md.replace(/<ol[^>]*>/gi, '\n');
       md = md.replace(/<\/ol>/gi, '\n');
 
-      // Paragraphs and breaks
+      // 6. Convert Paragraphs and Breaks
       md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
       md = md.replace(/<br\s*\/?>/gi, '\n');
       md = md.replace(/&nbsp;/g, ' ');
 
-      // Decoding entities (Basic)
-      md = md.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+      // 7. Strip any remaining HTML tags
+      md = md.replace(/<[^>]+>/g, '');
 
-      // Collapse multiple newlines
+      // 8. Collapse multiple newlines
       md = md.replace(/\n\s*\n\s*\n/g, '\n\n');
+
+      // 9. FINAL STEP: Decode entities (Fixes &eacute; -> é, etc.)
+      md = decodeHTMLEntities(md);
 
       return md.trim();
   };
 
   export const getGoogleDocContent = async (accessToken: string, fileId: string): Promise<string> => {
-    // We export as HTML now to preserve headers (H1, H2) structure
+    // Export as HTML to preserve structure, then process manually
     const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=text/html`, {
         headers: {
             Authorization: `Bearer ${accessToken}`
