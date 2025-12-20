@@ -16,6 +16,18 @@ interface BulkPostManagerProps {
     clearImportedData: () => void;
 }
 
+// Helper para gerar Slugs limpos (URL amigável)
+const generateSlug = (text: string) => {
+    if (!text) return '';
+    return text
+        .toString()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+        .replace(/[^a-z0-9]+/g, '-')      // Substitui não alfanuméricos por traço
+        .replace(/^-+|-+$/g, '');         // Remove traços do início e fim
+};
+
 const BulkPostManager: React.FC<BulkPostManagerProps> = ({ onOpenImportModal, importedData, clearImportedData }) => {
     const [drafts, setDrafts] = useState<BulkPostDraft[]>([]);
     const [sites, setSites] = useState<WordpressSite[]>([]);
@@ -63,10 +75,16 @@ const BulkPostManager: React.FC<BulkPostManagerProps> = ({ onOpenImportModal, im
                 extractedContent = markdown.replace(/^# .*$/m, '').trim();
             }
 
-            // Parse Slug if not set
-            let slug = draft.slug;
-            if (!slug || slug === 'sem-palavra-chave') {
-                    slug = extractedTitle.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, '-');
+            // Lógica do Slug:
+            // 1. Se tem Palavra-chave (vindo da planilha), ELA MANDA.
+            // 2. Se não tem, usa o título extraído do Doc.
+            let slug = '';
+            const hasKeyword = draft.keyword && draft.keyword !== '(Sem Palavra-chave)';
+
+            if (hasKeyword) {
+                slug = generateSlug(draft.keyword);
+            } else {
+                slug = generateSlug(extractedTitle);
             }
 
             updateDraft(draft.id, { 
@@ -129,7 +147,8 @@ const BulkPostManager: React.FC<BulkPostManagerProps> = ({ onOpenImportModal, im
                     title: 'Carregando...',
                     content: '',
                     matchedSiteId: matchedSite ? matchedSite.id : '',
-                    slug: keyword ? keyword.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, '-') : '',
+                    // Se tem keyword, já gera o slug inicial. Se não, espera carregar o doc.
+                    slug: keyword ? generateSlug(keyword) : '',
                     metaDesc: '',
                     image: null,
                     imagePreview: '',
