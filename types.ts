@@ -1,3 +1,4 @@
+
 export interface GuestPostRequest {
   id: string;
   keyword: string;
@@ -40,4 +41,12 @@ export interface BatchProgress {
   processed: number;
   currentKeyword: string;
   logs: string[];
+}
+
+export interface WordpressSite {
+    id: string;
+    name: string;
+    url: string;
+    username: string;
+    appPassword: string;
 }

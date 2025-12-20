@@ -1,12 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { 
     FileText, Link as LinkIcon, ArrowRight, Globe, Layout, Type, 
     Image as ImageIcon, CheckCircle, Loader2, Bold, Italic, 
-    List, Heading2, Heading3, Quote, Eye, Code
+    List, Heading2, Heading3, Quote, Eye, Code, Plus, Server, User, Lock, X
 } from 'lucide-react';
 import { extractSheetId } from '../services/sheets';
 import { getGoogleDocContent } from '../services/drive';
+import { WordpressSite } from '../types';
 
 const WordpressPublisher: React.FC = () => {
   const [step, setStep] = useState<'input' | 'editor'>('input');
@@ -18,6 +19,12 @@ const WordpressPublisher: React.FC = () => {
   const [content, setContent] = useState('');
   const [gdocLink, setGdocLink] = useState('');
   
+  // Site Management State
+  const [sites, setSites] = useState<WordpressSite[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState<string>('');
+  const [isAddSiteModalOpen, setIsAddSiteModalOpen] = useState(false);
+  const [newSite, setNewSite] = useState({ name: '', url: '', username: '', appPassword: '' });
+  
   // UI State
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,7 +32,50 @@ const WordpressPublisher: React.FC = () => {
   // Editor Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // --- MARKDOWN RENDER CONFIG (Same as ArticlePreview) ---
+  // --- INITIALIZATION ---
+  useEffect(() => {
+      // Load Sites from LocalStorage
+      try {
+          const stored = localStorage.getItem('guestpost_wp_sites');
+          if (stored) {
+              const parsed = JSON.parse(stored);
+              setSites(parsed);
+              if (parsed.length > 0) {
+                  setSelectedSiteId(parsed[0].id);
+              }
+          }
+      } catch (e) {
+          console.error("Erro ao carregar sites", e);
+      }
+  }, []);
+
+  // --- SITE MANAGEMENT ---
+  const handleSaveNewSite = () => {
+      if (!newSite.name || !newSite.url || !newSite.username || !newSite.appPassword) {
+          alert("Preencha todos os campos.");
+          return;
+      }
+
+      const site: WordpressSite = {
+          id: Date.now().toString(),
+          name: newSite.name,
+          url: newSite.url.replace(/\/$/, ''), // Remove trailing slash
+          username: newSite.username,
+          appPassword: newSite.appPassword
+      };
+
+      const updatedSites = [...sites, site];
+      setSites(updatedSites);
+      localStorage.setItem('guestpost_wp_sites', JSON.stringify(updatedSites));
+      setSelectedSiteId(site.id);
+      
+      setNewSite({ name: '', url: '', username: '', appPassword: '' });
+      setIsAddSiteModalOpen(false);
+  };
+
+  const getSelectedSite = () => sites.find(s => s.id === selectedSiteId);
+
+  // --- MARKDOWN RENDER CONFIG ---
   const MarkdownComponents = {
     h1: ({...props}) => <h1 className="text-3xl font-bold text-white mb-4 border-b border-slate-700 pb-2" {...props} />, 
     h2: ({...props}) => <h2 className="text-2xl font-bold text-slate-100 mt-8 mb-4" {...props} />,
@@ -240,7 +290,84 @@ const WordpressPublisher: React.FC = () => {
 
   // EDITOR VIEW
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
+        {/* ADD SITE MODAL */}
+        {isAddSiteModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+                    <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
+                        <h3 className="font-bold text-white flex items-center gap-2">
+                            <Server className="w-4 h-4 text-blue-400" /> Conectar Novo Site
+                        </h3>
+                        <button onClick={() => setIsAddSiteModalOpen(false)} className="text-slate-400 hover:text-white">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Nome do Site</label>
+                            <input 
+                                value={newSite.name}
+                                onChange={e => setNewSite({...newSite, name: e.target.value})}
+                                placeholder="Meu Blog Pessoal"
+                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">URL do WordPress</label>
+                            <div className="relative">
+                                <Globe className="absolute left-3 top-3 w-4 h-4 text-slate-600" />
+                                <input 
+                                    value={newSite.url}
+                                    onChange={e => setNewSite({...newSite, url: e.target.value})}
+                                    placeholder="https://meusite.com"
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-sm text-white focus:border-blue-500 outline-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase">Usuário (Login)</label>
+                                <div className="relative">
+                                    <User className="absolute left-3 top-3 w-4 h-4 text-slate-600" />
+                                    <input 
+                                        value={newSite.username}
+                                        onChange={e => setNewSite({...newSite, username: e.target.value})}
+                                        placeholder="admin"
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-sm text-white focus:border-blue-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+                             <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase">Senha de Aplicação</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-3 w-4 h-4 text-slate-600" />
+                                    <input 
+                                        type="password"
+                                        value={newSite.appPassword}
+                                        onChange={e => setNewSite({...newSite, appPassword: e.target.value})}
+                                        placeholder="abcd 1234 ..."
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-sm text-white focus:border-blue-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="text-[10px] text-slate-500 bg-blue-900/10 p-2 rounded border border-blue-900/30">
+                            <strong>Dica:</strong> Vá em Usuários &gt; Seu Perfil &gt; Senhas de Aplicação no painel do WP para gerar a senha.
+                        </div>
+
+                        <button 
+                            onClick={handleSaveNewSite}
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg mt-2 transition-colors"
+                        >
+                            Salvar e Conectar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Toolbar Top */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800 sticky top-0 z-10">
             <div className="flex items-center gap-4">
@@ -354,6 +481,31 @@ const WordpressPublisher: React.FC = () => {
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-6">Configurações de Publicação</h3>
                 
                 <div className="space-y-6">
+                    {/* Site Selector Dropdown */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                            <Server className="w-4 h-4 text-slate-500" /> Destino da Publicação
+                        </label>
+                        <select 
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-300 outline-none focus:border-blue-500"
+                            value={selectedSiteId}
+                            onChange={(e) => setSelectedSiteId(e.target.value)}
+                        >
+                            {sites.length === 0 && <option value="">Nenhum site conectado</option>}
+                            {sites.map(site => (
+                                <option key={site.id} value={site.id}>{site.name}</option>
+                            ))}
+                        </select>
+                        <button 
+                            onClick={() => setIsAddSiteModalOpen(true)}
+                            className="w-full flex items-center justify-center gap-2 py-2 border border-dashed border-slate-700 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800 hover:border-slate-600 transition-colors"
+                        >
+                            <Plus className="w-3 h-3" /> Adicionar Novo Site
+                        </button>
+                    </div>
+
+                    <div className="h-px bg-slate-800 my-4"></div>
+
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
                             <Layout className="w-4 h-4 text-slate-500" /> Categoria
@@ -387,14 +539,19 @@ const WordpressPublisher: React.FC = () => {
                     </div>
 
                     <div className="pt-6 border-t border-slate-800">
-                        <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-900/50">
-                            <p className="text-xs text-blue-300 mb-2">Conectado a:</p>
-                            <p className="text-sm font-bold text-white flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                meu-blog-wordpress.com
-                            </p>
-                        </div>
-                        <button className="w-full mt-4 text-xs text-slate-500 hover:text-white underline">Alterar conexão</button>
+                         {getSelectedSite() ? (
+                             <div className="bg-green-900/10 p-4 rounded-lg border border-green-900/30">
+                                <p className="text-xs text-green-400 mb-2">Conectado a:</p>
+                                <p className="text-sm font-bold text-white flex items-center gap-2 truncate">
+                                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                    {getSelectedSite()?.url}
+                                </p>
+                            </div>
+                         ) : (
+                             <div className="bg-yellow-900/10 p-4 rounded-lg border border-yellow-900/30">
+                                <p className="text-xs text-yellow-500">Nenhum site selecionado.</p>
+                            </div>
+                         )}
                     </div>
                 </div>
             </div>
