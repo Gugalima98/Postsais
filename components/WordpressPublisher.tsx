@@ -10,7 +10,12 @@ import { getGoogleDocContent } from '../services/drive';
 import { fetchWpCategories, createWpPost } from '../services/wordpress';
 import { WordpressSite, WordpressCategory } from '../types';
 
-const WordpressPublisher: React.FC = () => {
+interface WordpressPublisherProps {
+    initialTitle?: string;
+    initialContent?: string;
+}
+
+const WordpressPublisher: React.FC<WordpressPublisherProps> = ({ initialTitle, initialContent }) => {
   const [step, setStep] = useState<'input' | 'editor'>('input');
   const [importMode, setImportMode] = useState<'text' | 'gdoc'>('text');
   const [editorMode, setEditorMode] = useState<'visual' | 'text'>('text');
@@ -58,6 +63,19 @@ const WordpressPublisher: React.FC = () => {
           console.error("Erro ao carregar sites", e);
       }
   }, []);
+
+  // --- HYDRATE FROM PROPS (EDIT MODE) ---
+  useEffect(() => {
+      if (initialTitle || initialContent) {
+          setTitle(initialTitle || '');
+          setContent(initialContent || '');
+          // If we have content, jump straight to editor
+          if (initialContent) {
+              setStep('editor');
+              setEditorMode('text'); // Start in text mode to be safe with Markdown
+          }
+      }
+  }, [initialTitle, initialContent]);
 
   // Update slug automatically when title changes (if not manually edited logic could be added)
   useEffect(() => {

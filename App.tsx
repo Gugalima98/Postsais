@@ -323,6 +323,12 @@ const App: React.FC = () => {
     client.requestAccessToken();
   };
 
+  // Navigates to WP Publisher with active article data
+  const handleEditInWp = () => {
+      setMode(AppMode.WORDPRESS);
+      // We do NOT clear activeArticle here, so it can be passed as props
+  };
+
   // Render Helpers
   const renderContent = () => {
     if (mode === AppMode.SETTINGS) {
@@ -336,7 +342,12 @@ const App: React.FC = () => {
 
     // NEW MODE HANDLER
     if (mode === AppMode.WORDPRESS) {
-        return <WordpressPublisher />;
+        // Check if we came from an "Edit" action (activeArticle is present)
+        // If the user clicked the Sidebar, activeArticle would be null
+        return <WordpressPublisher 
+            initialTitle={activeArticle?.title}
+            initialContent={activeArticle?.content}
+        />;
     }
 
     if (mode === AppMode.SINGLE) {
@@ -347,6 +358,7 @@ const App: React.FC = () => {
                     onDownloadDoc={downloadAsDoc} 
                     onSaveToDrive={handleSaveToDrive}
                     onBack={() => setActiveArticle(null)}
+                    onEditWp={handleEditInWp}
                     isUploading={isUploading}
                 />
             );
@@ -421,7 +433,16 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout currentMode={mode} setMode={setMode} isFullWidth={mode === AppMode.SINGLE && activeArticle !== null || mode === AppMode.WORDPRESS}>
+    <Layout 
+        currentMode={mode} 
+        setMode={(newMode) => {
+            // When user clicks the Sidebar, we clear any active editing context
+            // so the tool opens fresh.
+            setMode(newMode);
+            setActiveArticle(null);
+        }} 
+        isFullWidth={mode === AppMode.SINGLE && activeArticle !== null || mode === AppMode.WORDPRESS}
+    >
         {notification && (
             <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce-in ${notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
                 {notification.type === 'success' ? <CheckCircle2 className="w-5 h-5"/> : <AlertTriangle className="w-5 h-5"/>}

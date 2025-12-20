@@ -1,17 +1,18 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { GeneratedArticle } from '../types';
-import { Download, CheckCircle, ExternalLink, Copy, UploadCloud, FileText, Calendar, ArrowLeft, Plus, Globe } from 'lucide-react';
+import { Download, CheckCircle, ExternalLink, Copy, UploadCloud, FileText, Calendar, ArrowLeft, Plus, Globe, PenTool } from 'lucide-react';
 
 interface ArticlePreviewProps {
   article: GeneratedArticle;
   onDownloadDoc: (article: GeneratedArticle) => void;
   onSaveToDrive: (article: GeneratedArticle) => void;
   onBack: () => void;
+  onEditWp: () => void; // New prop
   isUploading: boolean;
 }
 
-const ArticlePreview: React.FC<ArticlePreviewProps> = ({ article, onDownloadDoc, onSaveToDrive, onBack, isUploading }) => {
+const ArticlePreview: React.FC<ArticlePreviewProps> = ({ article, onDownloadDoc, onSaveToDrive, onBack, onEditWp, isUploading }) => {
   const [copied, setCopied] = React.useState(false);
 
   const handleCopy = () => {
@@ -70,6 +71,15 @@ const ArticlePreview: React.FC<ArticlePreviewProps> = ({ article, onDownloadDoc,
         </div>
 
         <div className="flex items-center gap-2">
+             {/* Edit in WP */}
+            <button
+                onClick={onEditWp}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-sm font-medium transition-colors border border-blue-600/20 mr-2"
+            >
+                <PenTool className="w-4 h-4" />
+                <span className="hidden sm:inline">Editar no WP</span>
+            </button>
+
              {/* Drive Action */}
             {article.driveUrl ? (
                 <a
