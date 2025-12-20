@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppMode } from '../types';
-import { PenTool, History, Settings, Zap, Menu, X, Globe } from 'lucide-react';
+import { PenTool, History, Settings, Zap, Menu, X, Globe, Layers } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -93,7 +93,19 @@ const Layout: React.FC<LayoutProps> = ({ children, currentMode, setMode, isFullW
             }`}
           >
             <Globe className="w-5 h-5" />
-            <span className="font-medium">Publicar WP</span>
+            <span className="font-medium">Editor WP</span>
+          </button>
+
+          <button
+            onClick={() => handleModeChange(AppMode.BULK_PUBLISH)}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+              currentMode === AppMode.BULK_PUBLISH
+                ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-600/20'
+                : 'hover:bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            <Layers className="w-5 h-5" />
+            <span className="font-medium">Postagem em Massa</span>
           </button>
         </nav>
 
@@ -128,7 +140,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentMode, setMode, isFullW
                 {children}
             </div>
          ) : (
-            <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col">
+            <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col">
                 {children}
             </div>
          )}

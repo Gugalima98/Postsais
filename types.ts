@@ -23,7 +23,8 @@ export enum AppMode {
   SINGLE = 'SINGLE',
   HISTORY = 'HISTORY',
   SETTINGS = 'SETTINGS',
-  WORDPRESS = 'WORDPRESS'
+  WORDPRESS = 'WORDPRESS',
+  BULK_PUBLISH = 'BULK_PUBLISH'
 }
 
 export interface QueueItem {
@@ -60,4 +61,31 @@ export interface WordpressCategory {
     slug: string;
     taxonomy: string;
     parent: number;
+}
+
+export interface BulkPostDraft {
+    id: string;
+    sheetRowIndex: number;
+    
+    // Imported Data
+    keyword: string;
+    originalDocUrl: string;
+    siteUrlFromSheet: string;
+    
+    // Content Data (Fetched from Doc)
+    title: string;
+    content: string;
+    
+    // Config Data
+    matchedSiteId: string | ''; // ID of WordpressSite
+    slug: string;
+    metaDesc: string;
+    image: File | null;
+    imagePreview: string;
+    categoryId: number | '';
+
+    // Status
+    status: 'idle' | 'loading_doc' | 'ready' | 'publishing' | 'success' | 'error';
+    errorMsg?: string;
+    publishedLink?: string;
 }

@@ -6,6 +6,7 @@ import Settings from './components/Settings';
 import SheetImportModal from './components/SheetImportModal';
 import BatchStatus from './components/BatchStatus';
 import WordpressPublisher from './components/WordpressPublisher';
+import BulkPostManager from './components/BulkPostManager'; // Imported
 import { generateGuestPostContent } from './services/gemini';
 import { uploadToDrive, convertMarkdownToHtml } from './services/drive';
 import { updateSheetCell } from './services/sheets';
@@ -59,6 +60,9 @@ const App: React.FC = () => {
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
+  
+  // New State for Bulk Import Data Transfer
+  const [bulkImportData, setBulkImportData] = useState<{ sheetId: string, rows: any[][], token: string } | null>(null);
 
   // --- BACKGROUND BATCH PROCESSING STATE ---
   const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -200,17 +204,22 @@ const App: React.FC = () => {
 
 
   // Handler called by the Modal when user clicks "Start"
-  const handleBatchImport = (sheetId: string, rows: any[][], token: string) => {
+  const handleSheetImport = (sheetId: string, rows: any[][], token: string) => {
+    
+    // IF WE ARE IN BULK PUBLISH MODE, REDIRECT DATA THERE
+    if (mode === AppMode.BULK_PUBLISH) {
+        setBulkImportData({ sheetId, rows, token });
+        setNotification({ msg: 'Dados importados! Revisando...', type: 'success' });
+        return;
+    }
+
+    // ELSE: GENERATION MODE (Existing logic)
     // 1. Transform rows into Queue Items
     let newQueue: QueueItem[] = [];
-    
-    // Check if it's demo or real
     const rowsToProcess = isDemoMode ? DEMO_ROWS : rows;
 
     rowsToProcess.forEach((row, index) => {
-        // Simple validation: Needs at least keyword (col 0)
         if (!row[0]) return;
-
         const req: GuestPostRequest = {
             id: generateId(),
             keyword: row[0],
@@ -219,11 +228,10 @@ const App: React.FC = () => {
             anchorText: row[3] || 'link',
             targetNiche: row[4] || 'Geral'
         };
-
         newQueue.push({
             id: generateId(),
             request: req,
-            rowIndex: index, // Used for 'sheetRow' calculation later
+            rowIndex: index, 
             sheetId: sheetId,
             status: 'pending'
         });
@@ -234,8 +242,7 @@ const App: React.FC = () => {
         return;
     }
 
-    // 2. Set State to start processing
-    setBatchToken(token); // Store token for the worker
+    setBatchToken(token); 
     setQueue(newQueue);
     setBatchProgress({
         isActive: true,
@@ -340,10 +347,17 @@ const App: React.FC = () => {
           }} />;
     }
 
-    // NEW MODE HANDLER
+    // BULK PUBLISH MODE
+    if (mode === AppMode.BULK_PUBLISH) {
+        return <BulkPostManager 
+            onOpenImportModal={() => setIsSheetModalOpen(true)}
+            importedData={bulkImportData}
+            clearImportedData={() => setBulkImportData(null)}
+        />;
+    }
+
+    // EDITOR WP MODE
     if (mode === AppMode.WORDPRESS) {
-        // Check if we came from an "Edit" action (activeArticle is present)
-        // If the user clicked the Sidebar, activeArticle would be null
         return <WordpressPublisher 
             initialTitle={activeArticle?.title}
             initialContent={activeArticle?.content}
@@ -365,15 +379,12 @@ const App: React.FC = () => {
         }
         return (
           <div className="h-full flex flex-col justify-center relative">
-            {/* NO Header here anymore. PostForm handles the title/greeting */}
-            
             <PostForm 
                 onSubmit={handleGenerate} 
                 isLoading={isLoading} 
                 onOpenBatchImport={() => setIsSheetModalOpen(true)}
             />
             
-            {/* Minimal footer link */}
             <div className="fixed bottom-4 left-0 right-0 flex justify-center pointer-events-none">
                  <button onClick={() => setMode(AppMode.SETTINGS)} className="pointer-events-auto text-[10px] text-slate-600 hover:text-indigo-400 flex items-center gap-2 transition-colors">
                     <Cloud className="w-3 h-3" /> Configurar Drive
@@ -440,8 +451,9 @@ const App: React.FC = () => {
             // so the tool opens fresh.
             setMode(newMode);
             setActiveArticle(null);
+            setBulkImportData(null); // Clear bulk data on nav change
         }} 
-        isFullWidth={mode === AppMode.SINGLE && activeArticle !== null || mode === AppMode.WORDPRESS}
+        isFullWidth={mode === AppMode.SINGLE && activeArticle !== null || mode === AppMode.WORDPRESS || mode === AppMode.BULK_PUBLISH}
     >
         {notification && (
             <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce-in ${notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
@@ -459,7 +471,7 @@ const App: React.FC = () => {
         <SheetImportModal 
             isOpen={isSheetModalOpen}
             onClose={() => setIsSheetModalOpen(false)}
-            onImport={handleBatchImport}
+            onImport={handleSheetImport}
             isDemoMode={isDemoMode}
         />
 
